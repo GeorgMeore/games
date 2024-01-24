@@ -120,7 +120,7 @@ const GameDelay = 28;
       AliensWidth = AlienCols*AlienWidth + (AlienCols-1)*AlienHStep;
       AliensHeight = AlienRows*AlienHeight + (AlienHStep-1)*AlienVStep;
       MinRows = PlayerHeight + ShieldOffset + ShieldHeight + AliensHeight;
-      MinCols = ShieldsWidth + 2; { It is assumed that AlienWidth is smaller}
+      MinCols = ShieldsWidth + 2; { It is assumed that AliensWidth is smaller}
       MaxRows = 255;
       MaxCols = 255;
 
@@ -525,6 +525,8 @@ begin
 end;
 
 
+{ We render to a buffer first instead of just writing directly to the screen
+  for performance reasons. It's just faster. }
 type Buffer = record
 	chars: array[1..MaxRows, 1..MaxCols] of char;
 	width: integer;
@@ -570,17 +572,17 @@ begin
 			buf.chars[si+i][sj+j] := banner[i][j]
 end;
 
-procedure renderEntity(var buf: Buffer; var entity: Entity);
+procedure renderEntity(var buf: Buffer; var ent: Entity);
 var
 	i, j: integer;
 	c: char;
 begin
-	for i := 1 to entity.height do
-		for j := 1 to entity.width do
+	for i := 1 to ent.height do
+		for j := 1 to ent.width do
 		begin
-			c := entity.sprite[(i-1)*entity.width + j];
+			c := ent.sprite[(i-1)*ent.width + j];
 			if c <> ' ' then
-				buf.chars[entity.y - entity.height + i][entity.x + j - 1] := c
+				buf.chars[ent.y - ent.height + i][ent.x + j - 1] := c
 		end
 end;
 
