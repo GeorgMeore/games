@@ -1,1 +1,5 @@
-Some simple games for terminal written in Pascal.
+# What is it?
+Some simple games for terminals written in Pascal.
+
+# Building
+You can build ANY of those via just `fpc ANY.pas`.
