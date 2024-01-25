@@ -3,20 +3,22 @@ program Invaders;
 { IDEA: write a small CRT replacement for VT100 }
 uses crt;
 
+
 const PlayerWidth = 5;
       PlayerHeight = 2;
-      ShieldWidth = 15;
-      ShieldHeight = 4;
-      BulletWidth = 1;
-      BulletHeight = 1;
-      AlienWidth = 7;
-      AlienHeight = 3;
 
 const PlayerSprite =
 	'  ^  ' +
 	'#####' ;
 
+const BulletWidth = 1;
+      BulletHeight = 1;
+
 const BulletSprite = '''';
+
+
+const AlienWidth = 7;
+      AlienHeight = 3;
 
 const AlienSprite1 =
 	' ##### ' +
@@ -28,38 +30,47 @@ const AlienSprite2 =
 	'##o#o##' +
 	'/ /v\ \' ;
 
+const AlienSpriteDying =
+	' \ | / ' +
+	'-- * --' +
+	' / | \ ' ;
+
+const ShieldWidth = 15;
+      ShieldHeight = 4;
+
 const ShieldSprite =
 	' ------------- ' +
 	'---------------' +
 	'---------------' +
 	'---         ---' ;
 
-const BannerHeight = 5;
 
 { IDEA: it would be fun to make a custom font format
         for this stuff with kerning etc }
+const BannerHeight = 5;
+
 type Banner = array[1..BannerHeight] of string;
 
-const WonBanner: Banner = (
-	'##   ##  #####   ##   ##    ##         ##  #####   ###    ##',
-	' ## ##  ##   ##  ##   ##    ##   ###   ## ##   ##  ####   ##',
-	'  ###   ##   ##  ##   ##     ## ## ## ##  ##   ##  ## ##  ##',
-	'  ###   ##   ##  ##   ##     ## ## ## ##  ##   ##  ##  ## ##',
-	'  ###    #####    #####       ###   ###    #####   ##   ####');
+var
+	WonBanner: Banner = (
+		'##   ##  #####   ##   ##    ##         ##  #####   ###    ##',
+		' ## ##  ##   ##  ##   ##    ##   ###   ## ##   ##  ####   ##',
+		'  ###   ##   ##  ##   ##     ## ## ## ##  ##   ##  ## ##  ##',
+		'  ###   ##   ##  ##   ##     ## ## ## ##  ##   ##  ##  ## ##',
+		'  ###    #####    #####       ###   ###    #####   ##   ####');
+	LostBanner: Banner = (
+		'##   ##  #####   ##   ##    ##      #####   ###### #########',
+		' ## ##  ##   ##  ##   ##    ##     ##   ##  ##        ###   ',
+		'  ###   ##   ##  ##   ##    ##     ##   ##  ######    ###   ',
+		'  ###   ##   ##  ##   ##    ##     ##   ##      ##    ###   ',
+		'  ###    #####    #####     ######  #####   ######    ###   ');
+	PausedBanner: Banner = (
+		'#######   ###    ##   ##  ######  ######  ###### ',
+		'##   ##  ## ##   ##   ##  ##      ##      ##   ##',
+		'####### #######  ##   ##  ######  ######  ##   ##',
+		'##      ##   ##  ##   ##      ##  ##      ##   ##',
+		'##      ##   ##   #####   ######  ######  ###### ');
 
-const LostBanner: Banner = (
-	'##   ##  #####   ##   ##    ##      #####   ###### #########',
-	' ## ##  ##   ##  ##   ##    ##     ##   ##  ##        ###   ',
-	'  ###   ##   ##  ##   ##    ##     ##   ##  ######    ###   ',
-	'  ###   ##   ##  ##   ##    ##     ##   ##      ##    ###   ',
-	'  ###    #####    #####     ######  #####   ######    ###   ');
-
-const PausedBanner: Banner = (
-	'#######   ###    ##   ##  ######  ######  ###### ',
-	'##   ##  ## ##   ##   ##  ##      ##      ##   ##',
-	'####### #######  ##   ##  ######  ######  ##   ##',
-	'##      ##   ##  ##   ##      ##  ##      ##   ##',
-	'##      ##   ##   #####   ######  ######  ###### ');
 
 type Entity = record
 	sprite: string;
@@ -94,7 +105,7 @@ begin
 		hits := ent.sprite[a + (ent.height - b)*ent.width] <> ' '
 end;
 
-procedure hit(var bullet: Entity; var shield: Entity);
+procedure shieldHit(var bullet: Entity; var shield: Entity);
 var
 	a, b: integer;
 begin
@@ -104,13 +115,13 @@ begin
 end;
 
 
-const GameDelay = 28;
+const GameDelay = 30;
       ShieldCount = 6;
       ShieldStep = 9;
       ShieldOffset = 3;
       ShieldsWidth = ShieldCount*ShieldWidth + (ShieldCount-1)*ShieldStep;
-      PlayerFireDelay = 10;
-      AliensFireChance = 0.05;
+      PlayerFireDelay = 15;
+      AliensFireChance = 0.03;
       AlienRows = 4;
       AlienCols = 9;
       AlienVStep = 1;
@@ -157,18 +168,31 @@ begin
 end;
 
 
-type Direction = (Left, Right, Down);
+type AliensDirection = (Left, Right, Down);
+type AlienMode = (Alive, Hit, Dying, Halfdead, Dead);
 
 type AliensState = record
 	ents: array[1..AlienRows, 1..AlienCols] of Entity;
 	row: integer;
 	col: integer;
-	dir: Direction;
-	alive: array[1..AlienRows, 1..AlienCols] of boolean;
+	dir: AliensDirection;
+	modes: array[1..AlienRows, 1..AlienCols] of AlienMode;
 	bullets: BulletList;
 	sprite1: string;
 	sprite2: string;
 	next: ^string;
+end;
+
+function hitsAlien(var bullet: Entity; var aliens: AliensState; i, j: integer): boolean;
+begin
+	hitsAlien := (aliens.modes[i][j] = Alive) and
+	             hits(bullet, aliens.ents[i][j])
+end;
+
+procedure alienHit(var aliens: AliensState; i, j: integer);
+begin
+	aliens.modes[i][j] := Hit;
+	aliens.ents[i][j].sprite := AlienSpriteDying
 end;
 
 procedure nextAlien(var aliens: AliensState; var alien: EntityPointer);
@@ -187,7 +211,7 @@ begin
 				j := aliens.col
 			else
 				j := AlienCols - aliens.col + 1;
-			if aliens.alive[i][j] then
+			if aliens.modes[i][j] = Alive then
 				alien := @aliens.ents[i][j];
 			inc(aliens.col)
 		end;
@@ -204,7 +228,7 @@ var
 begin
 	for j := 1 to AlienCols do
 		for i := 1 to AlienRows do
-			if aliens.alive[i][j] then
+			if aliens.modes[i][j] = Alive then
 			begin
 				leftmostAlien := @aliens.ents[i][j];
 				exit
@@ -218,7 +242,7 @@ var
 begin
 	for j := AlienCols downto 1 do
 		for i := 1 to AlienRows do
-			if aliens.alive[i][j] then
+			if aliens.modes[i][j] = Alive then
 			begin
 				rightmostAlien := @aliens.ents[i][j];
 				exit
@@ -282,16 +306,14 @@ begin
 		for i := 1 to ShieldCount do
 			if hits(pp^^.bullet, game.shields[i]) then
 			begin
-				hit(pp^^.bullet, game.shields[i]);
+				shieldHit(pp^^.bullet, game.shields[i]);
 				goto delete
 			end;
 		for i := 1 to AlienRows do
 			for j := 1 to AlienCols do
-				if game.aliens.alive[i][j] and
-				   hits(pp^^.bullet, game.aliens.ents[i][j])
-				then
+				if hitsAlien(pp^^.bullet, game.aliens, i, j) then
 				begin
-					game.aliens.alive[i][j] := false;
+					alienHit(game.aliens, i, j);
 					goto delete
 				end;
 		dec(pp^^.bullet.y);
@@ -364,7 +386,7 @@ begin
 		for i := 1 to ShieldCount do
 			if hits(pp^^.bullet, game.shields[i]) then
 			begin
-				hit(pp^^.bullet, game.shields[i]);
+				shieldHit(pp^^.bullet, game.shields[i]);
 				goto delete
 			end;
 		inc(pp^^.bullet.y);
@@ -377,11 +399,25 @@ delete:
 	end
 end;
 
+procedure updateHitAliens(var aliens: AliensState);
+var
+	i, j: integer;
+begin
+	for i := 1 to AlienRows do
+		for j := 1 to AlienCols do
+			case aliens.modes[i][j] of
+				Hit: aliens.modes[i][j] := Dying;
+				Dying: aliens.modes[i][j] := Halfdead;
+				Halfdead: aliens.modes[i][j] := Dead
+			end
+end;
+
 procedure updateAliens(var aliens: AliensState; var game: GameState);
 var
 	ap: ^Entity = nil;
 begin
 	updateAliensBullets(game);
+	updateHitAliens(aliens);
 	nextAlien(aliens, ap);
 	if ap = nil then
 	begin
@@ -453,8 +489,7 @@ begin
 	for i := 1 to AlienRows do
 		for j := 1 to AlienCols do
 		begin
-			{ TODO: death animation }
-			game.aliens.alive[i][j] := true;
+			game.aliens.modes[i][j] := Alive;
 			initEntity(game.aliens.ents[i][1 + AlienCols - j], AlienSprite1,
 			           AlienWidth, AlienHeight,
 			           game.cols - j*AlienWidth - (j-1)*AlienHStep + 1,
@@ -606,7 +641,7 @@ begin
 		renderEntity(buf, game.shields[i]);
 	for i := 1 to AlienRows do
 		for j := 1 to AlienCols do
-			if game.aliens.alive[i][j] then
+			if game.aliens.modes[i][j] <> Dead then
 				renderEntity(buf, game.aliens.ents[i][j]);
 	renderBulletList(buf, game.player.bullets);
 	renderBulletList(buf, game.aliens.bullets);
