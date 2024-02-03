@@ -32,8 +32,7 @@ end;
 
 procedure Vec2Copy(var dst, src: Vec2);
 begin
-	dst[0] := src[0];
-	dst[1] := src[1]
+	dst[0] := src[0]; dst[1] := src[1]
 end;
 
 function Vec2Equal(var v1, v2: Vec2): boolean;
@@ -70,7 +69,7 @@ procedure NewSegment(var sp: SegmentPtr; x, y: integer);
 begin
 	new(sp);
 	Vec2Set(sp^.pos, x, y);
-	sp^.next := nil;
+	sp^.next := nil
 end;
 
 function SnakeItersects(var s: Snake; var pos: Vec2; skipLast: boolean): boolean;

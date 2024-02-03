@@ -197,7 +197,7 @@ begin
 			GotoXY(x, y);
 			write(' ')
 		end;
-	GotoXY(ScreenWidth, ScreenHeight);
+	GotoXY(ScreenWidth, ScreenHeight)
 end;
 
 procedure SetShapeDefaults(var sh: Shape);
@@ -317,7 +317,7 @@ begin
 	if not ok then
 		exit;
 	sh.x := 1 + sh.r;
-	sh.y := 1 + sh.r;
+	sh.y := 1 + sh.r
 end;
 
 procedure ClearScreen;
