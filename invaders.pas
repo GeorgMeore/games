@@ -164,7 +164,7 @@ begin
 		next := bullets^.next;
 		dispose(bullets);
 		bullets := next
-	end;
+	end
 end;
 
 
@@ -180,7 +180,7 @@ type AliensState = record
 	bullets: BulletList;
 	sprite1: string;
 	sprite2: string;
-	next: ^string;
+	next: ^string
 end;
 
 function hitsAlien(var bullet: Entity; var aliens: AliensState; i, j: integer): boolean;
@@ -447,7 +447,7 @@ begin
 			begin
 				ap^.y := ap^.y + AlienVShift
 			end
-	end;
+	end
 end;
 
 procedure initGame(var game: GameState);
@@ -627,7 +627,7 @@ begin
 	begin
 		renderEntity(buf, bullets^.bullet);
 		bullets := bullets^.next
-	end;
+	end
 end;
 
 procedure render(var game: GameState);
